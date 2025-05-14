@@ -260,41 +260,59 @@ bullets.push({
     })
   }
   
-  // Movimento adaptável do boss com suporte a telas pequenas (como celulares)
-function handleBossMovement(enemy, level) {
-  // Garantir que o canvas tenha dimensões corretas para qualquer dispositivo
+  function handleBossMovement(enemy, level) {
+  // Detecta se é dispositivo móvel (exemplo simples com largura da tela)
+  const isMobile = window.innerWidth <= 768;
+
+  // Define tamanho original do boss (suponha que já esteja definido na criação)
+  const originalWidth = enemy.originalWidth || enemy.width;
+  const originalHeight = enemy.originalHeight || enemy.height;
+
+  // Armazena o tamanho original se ainda não armazenado
+  if (!enemy.originalWidth) enemy.originalWidth = enemy.width;
+  if (!enemy.originalHeight) enemy.originalHeight = enemy.height;
+
+  // Se for mobile, redimensiona para metade do tamanho original
+  if (isMobile) {
+    enemy.width = originalWidth / 2;
+    enemy.height = originalHeight / 2;
+  } else {
+    // Caso contrário, mantém o tamanho original
+    enemy.width = originalWidth;
+    enemy.height = originalHeight;
+  }
+
+  // Atualiza canvas para caber na tela do dispositivo
   const maxWidth = window.innerWidth;
   const maxHeight = window.innerHeight;
-
-  // Atualiza as dimensões do canvas conforme necessário
   canvas.width = Math.min(canvas.width, maxWidth);
   canvas.height = Math.min(canvas.height, maxHeight);
 
-  // Recalcular limites com base nas novas dimensões
   const canvasRight = canvas.width;
   const canvasBottom = canvas.height;
 
-  // Inverter direção horizontal ao colidir com bordas
-  if (enemy.x <= 0 || enemy.x + enemy.width >= canvasRight) {
-    enemy.speed *= -1;
-    enemy.x = Math.max(0, Math.min(enemy.x, canvasRight - enemy.width)); // Corrige se sair da tela
+  // Corrige posição do boss para não sair da tela horizontalmente
+  if (enemy.x <= 0) {
+    enemy.x = 0;
+    enemy.speed = Math.abs(enemy.speed); // força movimento para direita
+  }
+  else if (enemy.x + enemy.width >= canvasRight) {
+    enemy.x = canvasRight - enemy.width;
+    enemy.speed = -Math.abs(enemy.speed); // força movimento para esquerda
   }
 
-  // Impedir que ultrapasse o limite inferior da tela
+  // Corrige posição vertical do boss
   if (enemy.y + enemy.height >= canvasBottom) {
-    enemy.speed *= -1; // pode ser vertical se desejar rebote
     enemy.y = canvasBottom - enemy.height;
   }
-
-  // Impedir que vá para cima demais
-  if (enemy.y <= 0) {
+  if (enemy.y < 0) {
     enemy.y = 0;
   }
 
-  // Movimenta horizontalmente
+  // Atualiza posição horizontal com velocidade
   enemy.x += enemy.speed;
 
-  // Simula leve descida se estiver acima do topo
+  // Caso o boss esteja acima do topo (exemplo anterior), faz descida suave
   if (enemy.y < 0 && enemy.y + enemy.height > 0) {
     enemy.y += 2;
   }
@@ -305,6 +323,7 @@ function handleBossMovement(enemy, level) {
     shootMultiDirection(enemy);
   }
 }
+
 
   
   // Disparo múltiplo realista de canhões posicionados nas laterais e cantos do boss
