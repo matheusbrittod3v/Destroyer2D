@@ -260,55 +260,83 @@ bullets.push({
     })
   }
   
-  // Movimento do boss
-  function handleBossMovement(enemy, level) {
-    if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
-      enemy.speed *= -1
-    }
-  
-    if (enemy.y + enemy.height >= canvas.height) {
-      enemy.speed *= -1
-      enemy.y = canvas.height - enemy.height
-    }
-  
-    if (enemy.y <= 0) {
-      enemy.y = 0
-    }
-  
-    enemy.x += enemy.speed
-  
-    if (enemy.y < 0 && enemy.y + enemy.height > 0) {
-      enemy.y += 2
-    }
-  
-    const shootChance = 0.02 + level * 0.001
-    if (Math.random() < shootChance) {
-      shootMultiDirection(enemy)
-    }
+  // Movimento adaptável do boss com suporte a telas pequenas (como celulares)
+function handleBossMovement(enemy, level) {
+  // Garantir que o canvas tenha dimensões corretas para qualquer dispositivo
+  const maxWidth = window.innerWidth;
+  const maxHeight = window.innerHeight;
+
+  // Atualiza as dimensões do canvas conforme necessário
+  canvas.width = Math.min(canvas.width, maxWidth);
+  canvas.height = Math.min(canvas.height, maxHeight);
+
+  // Recalcular limites com base nas novas dimensões
+  const canvasRight = canvas.width;
+  const canvasBottom = canvas.height;
+
+  // Inverter direção horizontal ao colidir com bordas
+  if (enemy.x <= 0 || enemy.x + enemy.width >= canvasRight) {
+    enemy.speed *= -1;
+    enemy.x = Math.max(0, Math.min(enemy.x, canvasRight - enemy.width)); // Corrige se sair da tela
   }
-  
-  // Função de disparo em múltiplas direções (boss)
-  function shootMultiDirection(enemy) {
-    const directions = [
-      { x: -1, y: -1 }, { x: 1, y: -1 },
-      { x: -1, y: 1 }, { x: 1, y: 1 },
-      { x: 0, y: -1 },
-      { x: -1, y: 0 }, { x: 1, y: 0 },
-      { x: 0, y: 1 },
-    ]
-  
-    directions.forEach(dir => {
-      enemyBullets.push({
-        x: enemy.x + enemy.width / 2 - 2,
-        y: enemy.y + enemy.height / 2,
-        width: 4,
-        height: 10,
-        speed: 2 + stats.level * 0.2,
-        dx: dir.x,
-        dy: dir.y,
-      })
-    })
+
+  // Impedir que ultrapasse o limite inferior da tela
+  if (enemy.y + enemy.height >= canvasBottom) {
+    enemy.speed *= -1; // pode ser vertical se desejar rebote
+    enemy.y = canvasBottom - enemy.height;
   }
+
+  // Impedir que vá para cima demais
+  if (enemy.y <= 0) {
+    enemy.y = 0;
+  }
+
+  // Movimenta horizontalmente
+  enemy.x += enemy.speed;
+
+  // Simula leve descida se estiver acima do topo
+  if (enemy.y < 0 && enemy.y + enemy.height > 0) {
+    enemy.y += 2;
+  }
+
+  // Chance de disparar baseada no nível atual
+  const shootChance = 0.02 + level * 0.001;
+  if (Math.random() < shootChance) {
+    shootMultiDirection(enemy);
+  }
+}
+
+  
+  // Disparo múltiplo realista de canhões posicionados nas laterais e cantos do boss
+function shootMultiDirection(enemy) {
+  // Define as "armas" (canhões) com posição e direção específicas
+  const cannons = [
+    // Cantos
+    { offsetX: 0, offsetY: 0, dx: -1, dy: -1 },                                 // topo-esquerda
+    { offsetX: enemy.width, offsetY: 0, dx: 1, dy: -1 },                        // topo-direita
+    { offsetX: 0, offsetY: enemy.height, dx: -1, dy: 1 },                       // baixo-esquerda
+    { offsetX: enemy.width, offsetY: enemy.height, dx: 1, dy: 1 },             // baixo-direita
+
+    // Laterais
+    { offsetX: enemy.width / 2, offsetY: 0, dx: 0, dy: -1 },                    // topo-centro
+    { offsetX: 0, offsetY: enemy.height / 2, dx: -1, dy: 0 },                   // meio-esquerda
+    { offsetX: enemy.width, offsetY: enemy.height / 2, dx: 1, dy: 0 },          // meio-direita
+    { offsetX: enemy.width / 2, offsetY: enemy.height, dx: 0, dy: 1 },          // baixo-centro
+  ];
+
+  cannons.forEach(cannon => {
+    enemyBullets.push({
+      x: enemy.x + cannon.offsetX - 2,
+      y: enemy.y + cannon.offsetY - 5,
+      width: 4,
+      height: 10,
+      speed: 2 + stats.level * 0.2,
+      dx: cannon.dx,
+      dy: cannon.dy,
+    });
+  });
+}
+
   
   // Criação de inimigos com base no nível
   function createEnemies() {
