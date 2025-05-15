@@ -69,30 +69,30 @@ let burstCooldown = 0
 
 
   let basicEnemyImage = new Image();
-basicEnemyImage.src = '/storage/navs/basic.png'; // Caminho da imagem para inimigos básicos
+basicEnemyImage.src = 'navs/basic.png'; // Caminho da imagem para inimigos básicos
 basicEnemyImage.onload = () => {
   console.log('Imagem da nave inimiga básica carregada com sucesso!');
 };
 basicEnemyImage.onerror = () => {
-  console.error('Erro ao carregar a imagem da nave inimiga básica!');
+  
 };
 
 let mediumEnemyImage = new Image();
-mediumEnemyImage.src = '/storage/navs/medium.png'; // Substitua pelo caminho correto da imagem
+mediumEnemyImage.src = 'navs/medium.png'; // Substitua pelo caminho correto da imagem
 mediumEnemyImage.onload = () => {
-  console.log('Imagem da nave inimiga média carregada com sucesso!');
+  
 };
 mediumEnemyImage.onerror = () => {
-  console.error('Erro ao carregar a imagem da nave inimiga média!');
+  
 };
 
 let bossEnemyImage = new Image();
-bossEnemyImage.src = '/storage/navs/boss.png'; // Substitua pelo caminho correto da imagem
+bossEnemyImage.src = 'navs/boss.png'; // Substitua pelo caminho correto da imagem
 bossEnemyImage.onload = () => {
-  console.log('Imagem da nave inimiga boss carregada com sucesso!');
+  
 };
 bossEnemyImage.onerror = () => {
-  console.error('Erro ao carregar a imagem da nave inimiga boss!');
+  
 };
 
 
@@ -136,7 +136,7 @@ bossEnemyImage.onerror = () => {
     image: new Image() // Adiciona a imagem ao objeto da nave
   };
   // Defina o caminho para o arquivo PNG da nave
-  spaceship.image.src = '/storage/navs/padraoplayer.png'; // Substitua pelo caminho correto da imagem
+  spaceship.image.src = '/navs/padraoplayer.png'; // Substitua pelo caminho correto da imagem
   // Certifique-se de que a imagem está carregada antes de iniciar o jogo
   spaceship.image.onload = () => {
     console.log('Imagem da nave carregada com sucesso!');
