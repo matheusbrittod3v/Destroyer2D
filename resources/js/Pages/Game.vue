@@ -108,11 +108,21 @@ bossEnemyImage.onerror = () => {
   
   // Configuração do canvas
   function setupCanvas() {
-    canvas = document.getElementById('gameCanvas')
-    ctx = canvas.getContext('2d')
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
+  canvas = document.getElementById('gameCanvas');
+  ctx = canvas.getContext('2d');
+  const isMobile = window.innerWidth <= 768;
+  // Reduz a resolução em dispositivos móveis
+  if (isMobile) {
+    canvas.width = window.innerWidth * 0.75; // Reduz para 75% da largura
+    canvas.height = window.innerHeight * 0.75; // Reduz para 75% da altura
+  } else {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
   }
+  // Ajusta o estilo para ocupar a tela inteira mesmo com resolução menor
+  canvas.style.width = `${window.innerWidth}px`;
+  canvas.style.height = `${window.innerHeight}px`;
+}
   
   function setupSpaceship() {
   spaceship = {
@@ -199,14 +209,25 @@ function updatePlayerDamage() {
   }
   
   // Loop principal de atualização e renderização
-  function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-  
-    update()
-    draw()
-  
-    requestAnimationFrame(gameLoop)
+  function gameLoop(timestamp) {
+  // Detecta se é dispositivo móvel
+  const isMobile = window.innerWidth <= 768;
+  // Controla FPS (30 para mobile, 60 para desktop)
+  const targetFPS = isMobile ? 30 : 60;
+  const frameInterval = 1000 / targetFPS;
+
+  if (!gameLoop.lastTime) gameLoop.lastTime = timestamp;
+  const deltaTime = timestamp - gameLoop.lastTime;
+
+  if (deltaTime >= frameInterval) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    update();
+    draw();
+    gameLoop.lastTime = timestamp;
   }
+
+  requestAnimationFrame(gameLoop);
+}
   
   // Atualização dos elementos do jogo
   function update() {
@@ -240,13 +261,13 @@ function updatePlayerDamage() {
   
   // Desenhos na tela
   function draw() {
-    drawSpaceship()
-    drawBullets()
-    drawEnemies()
-    drawBonuses(); 
-    drawEnemyBullets()
-    
-  }
+  // Desenha todos os elementos de uma vez, minimizando mudanças de estado
+  drawSpaceship();
+  drawBullets();
+  drawEnemyBullets();
+  drawEnemies();
+  drawBonuses();
+}
   
   // Movimento da nave
   function movePlayer() {
@@ -685,52 +706,47 @@ function nextLevel() {
 }
 
 function drawSpaceship() {
-  // Verifica se a imagem está carregada antes de desenhar
   if (spaceship.image.complete) {
     ctx.drawImage(spaceship.image, spaceship.x, spaceship.y, spaceship.width, spaceship.height);
   } else {
-    // Caso a imagem ainda não tenha carregado, desenha um retângulo como fallback
     ctx.fillStyle = 'lime';
     ctx.fillRect(spaceship.x, spaceship.y, spaceship.width, spaceship.height);
   }
-
-  // Desenha a barra de escudo
+  // Desenha barras de escudo e vida apenas se necessário
   if (spaceship.maxShield > 0) {
     ctx.fillStyle = 'gray';
     ctx.fillRect(spaceship.x, spaceship.y - 12, spaceship.width, 6);
-
     ctx.fillStyle = 'deepskyblue';
     ctx.fillRect(spaceship.x, spaceship.y - 12, (spaceship.shield / spaceship.maxShield) * spaceship.width, 6);
   }
-
-  // Desenha a barra de vida (health)
-  const maxHealth = 500; // Ajuste conforme o valor máximo de vida no seu jogo
+  const maxHealth = 500;
   if (maxHealth > 0) {
     ctx.fillStyle = 'gray';
-    ctx.fillRect(spaceship.x, spaceship.y - 6, spaceship.width, 6); // Posiciona logo abaixo da barra de escudo
-
-    ctx.fillStyle = 'green'; // Cor para a barra de vida
+    ctx.fillRect(spaceship.x, spaceship.y - 6, spaceship.width, 6);
+    ctx.fillStyle = 'green';
     ctx.fillRect(spaceship.x, spaceship.y - 6, (stats.health / maxHealth) * spaceship.width, 6);
   }
 }
   
-  function drawBullets() {
-    ctx.fillStyle = 'red'
-    bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height))
-  }
-  
-  function drawEnemyBullets() {
-    ctx.fillStyle = 'yellow'
-    enemyBullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height))
-  }
+function drawBullets() {
+  if (bullets.length === 0) return; // Evita operações se não houver elementos
+  ctx.fillStyle = 'red';
+  bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+}
+
+function drawEnemyBullets() {
+  if (enemyBullets.length === 0) return; // Evita operações se não houver elementos
+  ctx.fillStyle = 'yellow';
+  enemyBullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
+}
   
 
-  function drawBonuses() {
+function drawBonuses() {
+  if (bonuses.length === 0) return; // Evita operações se não houver bônus
   bonuses.forEach(bonus => {
     ctx.fillStyle = bonus.type === 'health' ? 'green' : 'deepskyblue';
     ctx.fillRect(bonus.x, bonus.y, bonus.width, bonus.height);
-
-    // Desenhar multiplicador (x1, x2, x3) em branco por cima
+    // Desenha texto apenas se necessário
     ctx.fillStyle = 'white';
     ctx.font = '16px Arial';
     ctx.fillText('x' + bonus.multiplier, bonus.x + 5, bonus.y + 18);
@@ -738,26 +754,27 @@ function drawSpaceship() {
 }
 
 function drawEnemies() {
+  const isMobile = window.innerWidth <= 768;
   enemies.forEach(e => {
-    // Desenha a imagem se estiver carregada e associada ao inimigo (para qualquer tipo)
+    // Ajusta dimensões do boss em mobile para reduzir carga de renderização
+    if (isMobile && e.type === 'boss') {
+      e.width = e.originalWidth ? e.originalWidth / 2 : e.width / 2;
+      e.height = e.originalHeight ? e.originalHeight / 2 : e.height / 2;
+    }
+    // Desenha a imagem se estiver carregada
     if (e.image && e.image.complete) {
       ctx.drawImage(e.image, e.x, e.y, e.width, e.height);
     } else {
-      // Caso contrário, desenha um retângulo com a cor correspondente ao tipo (fallback)
       ctx.fillStyle = e.type === 'basic' ? 'red' : e.type === 'medium' ? 'orange' : 'purple';
       ctx.fillRect(e.x, e.y, e.width, e.height);
     }
-
-    // Desenha a barra de escudo, se houver
+    // Desenha barras de escudo e vida apenas se necessário
     if (e.maxShield > 0) {
       ctx.fillStyle = 'gray';
       ctx.fillRect(e.x, e.y - 16, e.width, 5);
-
       ctx.fillStyle = 'lightblue';
       ctx.fillRect(e.x, e.y - 16, (e.shield / e.maxShield) * e.width, 5);
     }
-
-    // Desenha a barra de vida
     ctx.fillStyle = 'green';
     ctx.fillRect(e.x, e.y - 8, (e.health / e.maxHealth) * e.width, 5);
   });
