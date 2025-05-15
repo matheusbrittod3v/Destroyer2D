@@ -13,6 +13,7 @@
         <div class="text-lg">
           <span class="mr-6">Score: {{ stats.score }}</span>
           <span class="mr-6">Level: {{ stats.level }}</span>
+          <span class="mr-6">Shield: {{ shieldValue }}%</span>
           <span>Health: {{ stats.health }}%</span>
           
         </div>
@@ -22,6 +23,8 @@
   
   <script setup>
   import { onMounted, reactive } from 'vue'
+  import { ref } from 'vue'
+const shieldValue = ref(100)
   
   // Estado reativo para armazenar as informações do jogo
   const stats = reactive({
@@ -43,6 +46,8 @@ let burstCooldown = 0
   let enemyBullets = []
   let keys = {}
   let lastEnemySpawn = 0
+  let bonuses = []  // array para armazenar os bônus ativos
+
   
   const COOLDOWN = 800
   const DAMAGE_PLAYER = 15
@@ -61,7 +66,45 @@ let burstCooldown = 0
     gameLoop()
   })
 
-  
+
+
+  let basicEnemyImage = new Image();
+basicEnemyImage.src = '/storage/navs/basic.png'; // Caminho da imagem para inimigos básicos
+basicEnemyImage.onload = () => {
+  console.log('Imagem da nave inimiga básica carregada com sucesso!');
+};
+basicEnemyImage.onerror = () => {
+  console.error('Erro ao carregar a imagem da nave inimiga básica!');
+};
+
+let mediumEnemyImage = new Image();
+mediumEnemyImage.src = '/storage/navs/medium.png'; // Substitua pelo caminho correto da imagem
+mediumEnemyImage.onload = () => {
+  console.log('Imagem da nave inimiga média carregada com sucesso!');
+};
+mediumEnemyImage.onerror = () => {
+  console.error('Erro ao carregar a imagem da nave inimiga média!');
+};
+
+let bossEnemyImage = new Image();
+bossEnemyImage.src = '/storage/navs/boss.png'; // Substitua pelo caminho correto da imagem
+bossEnemyImage.onload = () => {
+  console.log('Imagem da nave inimiga boss carregada com sucesso!');
+};
+bossEnemyImage.onerror = () => {
+  console.error('Erro ao carregar a imagem da nave inimiga boss!');
+};
+
+
+
+
+
+
+
+
+  function updateShieldValue() {
+  shieldValue.value = Math.round(spaceship.shield)
+}
   
   // Configuração do canvas
   function setupCanvas() {
@@ -71,16 +114,25 @@ let burstCooldown = 0
     canvas.height = window.innerHeight
   }
   
-  // Configuração da nave
   function setupSpaceship() {
-    spaceship = {
-      x: canvas.width / 2 - 15,
-      y: canvas.height - 60,
-      width: 30,
-      height: 30,
-      speed: 10,
-    }
-  }
+  spaceship = {
+    x: canvas.width / 2 - 15,
+    y: canvas.height - 60,
+    width: 30,
+    height: 30,
+    speed: 10,
+    shield: 1000,
+    maxShield: 1000,
+    image: new Image() // Adiciona a imagem ao objeto da nave
+  };
+  // Defina o caminho para o arquivo PNG da nave
+  spaceship.image.src = '/storage/navs/padraoplayer.png'; // Substitua pelo caminho correto da imagem
+  // Certifique-se de que a imagem está carregada antes de iniciar o jogo
+  spaceship.image.onload = () => {
+    console.log('Imagem da nave carregada com sucesso!');
+  };
+}
+
 
   function setupTouchControls() {
   let isTouching = false
@@ -158,21 +210,42 @@ function updatePlayerDamage() {
   
   // Atualização dos elementos do jogo
   function update() {
-    movePlayer()
-    moveBullets()
-    moveEnemyBullets()
-    moveEnemies()
-    handleCollisions()
-    createEnemies()
-    
+  movePlayer();
+  moveBullets();
+  moveEnemyBullets();
+  moveEnemies();
+  moveBonuses();           // <- adiciona aqui o movimento dos bônus
+  updateShieldValue();
+  handleCollisions();
+  createEnemies();
+
+ // Controle de spawn do bônus, intervalo diminui 0,2s a cada nível, mínimo 2 segundos
+ const now = Date.now()
+  if (!update.lastBonusSpawn) update.lastBonusSpawn = 0
+
+  const baseInterval = 10000 // 10 segundos em ms
+  const decreasePerLevel = 200 // 0.2 segundos em ms
+  const minInterval = 2000 // intervalo mínimo de 2 segundos
+
+  const interval = Math.max(minInterval, baseInterval - decreasePerLevel * (stats.level  + 1))
+
+  if (now - update.lastBonusSpawn > interval) {
+    spawnBonus()
+    update.lastBonusSpawn = now
   }
+  
+  
+}
+
   
   // Desenhos na tela
   function draw() {
     drawSpaceship()
     drawBullets()
     drawEnemies()
+    drawBonuses(); 
     drawEnemyBullets()
+    
   }
   
   // Movimento da nave
@@ -268,7 +341,7 @@ bullets.push({
           y: enemy.y + enemy.height,
           width: 7,
           height: 10,
-          speed: 3 + level * 0.5,
+          speed: 5 + level * 0.5,
         })
       }
     })
@@ -332,7 +405,7 @@ bullets.push({
   }
 
   // Chance de disparar baseada no nível atual
-  const shootChance = 0.02 + level * 0.001;
+  const shootChance = 0.04 + level * 0.01;
   if (Math.random() < shootChance) {
     shootMultiDirection(enemy);
   }
@@ -370,6 +443,41 @@ function shootMultiDirection(enemy) {
   });
 }
 
+
+function spawnBonus() {
+  if (bonuses.length >= 3) return; // Limite máximo de bônus simultâneos
+
+  // Gera posição aleatória dentro da tela (evitando áreas extremas)
+  const width = 45;
+  const height = 45;
+  const x = Math.random() * (canvas.width - width);
+  const y = -height;  // começa acima da tela para cair
+
+  // Define tipo do bônus e multiplicador (x1, x2, x3)
+  // 50% chance vida, 50% escudo
+  const type = Math.random() < 0.5 ? 'health' : 'shield';
+  // Multiplicador entre 1, 2 e 3 (probabilidade distribuída)
+  const multiplier = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,][Math.floor(Math.random() * 10)];
+  // Valor base (em %)
+  const baseValue = 10;
+
+  bonuses.push({
+    x, y, width, height,
+    speed: 2,
+    type,
+    multiplier,
+    value: baseValue,
+    collected: false,
+  });
+}
+function moveBonuses() {
+  bonuses = bonuses.filter(bonus => bonus.y < canvas.height && !bonus.collected);
+
+  bonuses.forEach(bonus => {
+    bonus.y += bonus.speed;
+  });
+}
+
   
   // Criação de inimigos com base no nível
   function createEnemies() {
@@ -399,46 +507,121 @@ function shootMultiDirection(enemy) {
     lastEnemySpawn = now
   }
   
-  // Função de criação genérica de inimigos
   function spawnEnemy(type, width, height, speed, health, damage, x = Math.random() * (canvas.width - width)) {
-    enemies.push({
-      x, y: 0, width, height, speed,
-      health, maxHealth: health,
-      damage, type
-    })
+  let shield = 0;
+  let maxShield = 0;
+  if (type === 'medium') {
+    maxShield = 30 + stats.level * 20;
+    shield = maxShield;
+  } else if (type === 'boss') {
+    maxShield = 150 + stats.level * 50;
+    shield = maxShield;
   }
+
+  const enemy = {
+    x, y: 0, width, height, speed,
+    health, maxHealth: health,
+    damage, type,
+    shield,
+    maxShield
+  };
+
+  // Adiciona a imagem correspondente ao tipo de inimigo
+  if (type === 'basic') {
+    enemy.image = basicEnemyImage;
+  } else if (type === 'medium') {
+    enemy.image = mediumEnemyImage;
+  } else if (type === 'boss') {
+    enemy.image = bossEnemyImage;
+  }
+
+  enemies.push(enemy);
+}
   
-  // Função de colisão
-  function handleCollisions() {
-    // Colisão de tiros com inimigos
-    for (let i = bullets.length - 1; i >= 0; i--) {
-      const bullet = bullets[i]
-      for (let j = enemies.length - 1; j >= 0; j--) {
-        const enemy = enemies[j]
-        if (checkCollision(bullet, enemy)) {
-            enemy.health -= playerDamage.value
+function updatePlayerShield() {
+  // Define o escudo máximo baseado no level (por exemplo: escala linear ou exponencial)
+  spaceship.maxShield = 100 + (stats.level - 1) * 50 // escudo base + 50 por level
+  spaceship.shield = Math.min(spaceship.shield + 25, spaceship.maxShield) // recarrega 25 por level up
+}
 
 
-          bullets.splice(i, 1)
-          if (enemy.health <= 0) {
-            enemies.splice(j, 1)
-            stats.score += enemy.type === 'boss' ? 100 : 10
-            if (enemy.type === 'boss') {
-              stats.bossDefeated = true
-              nextLevel()
-            }
-          }
-          break
-        }
+
+
+function handleCollisions() {
+  // Colisão tiros com inimigos (já existe)
+
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const bullet = bullets[i];
+
+    // Checa colisão com bônus
+    for (let k = bonuses.length - 1; k >= 0; k--) {
+      const bonus = bonuses[k];
+      if (checkCollision(bullet, bonus)) {
+        applyBonus(bonus);
+        bonuses.splice(k, 1);
+        bullets.splice(i, 1);
+        break;
       }
     }
+
+    // Checa colisão com inimigos (existente)
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      const enemy = enemies[j];
+      if (checkCollision(bullet, enemy)) {
+        let damage = playerDamage.value;
+
+        if (enemy.shield > 0) {
+          if (enemy.shield >= damage) {
+            enemy.shield -= damage;
+            damage = 0;
+          } else {
+            damage -= enemy.shield;
+            enemy.shield = 0;
+          }
+        }
+
+        if (damage > 0) {
+          enemy.health -= damage;
+        }
+
+        bullets.splice(i, 1);
+
+        if (enemy.health <= 0) {
+          enemies.splice(j, 1);
+          stats.score += enemy.type === 'boss' ? 100 : 10;
+          if (enemy.type === 'boss') {
+            stats.bossDefeated = true;
+            nextLevel();
+          }
+        }
+        break;
+      }
+    }
+  }
+
+
+
+          
   
-    // Colisão de tiros inimigos com jogador
-for (let i = enemyBullets.length - 1; i >= 0; i--) {
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
   const bullet = enemyBullets[i]
   if (checkCollision(bullet, spaceship)) {
     enemyBullets.splice(i, 1)
-    stats.health -= DAMAGE_PLAYER
+    let damage = DAMAGE_PLAYER;
+
+    if (spaceship.shield > 0) {
+      if (spaceship.shield >= damage) {
+        spaceship.shield -= damage
+        damage = 0
+      } else {
+        damage -= spaceship.shield
+        spaceship.shield = 0
+      }
+    }
+
+    if (damage > 0) {
+      stats.health -= damage
+    }
 
     if (stats.health <= 0) {
       Swal.fire({
@@ -470,6 +653,24 @@ for (let i = enemyBullets.length - 1; i >= 0; i--) {
            a.y + a.height > b.y
   }
   
+
+
+
+  function applyBonus(bonus) {
+  const totalValue = bonus.value * bonus.multiplier;
+
+  if (bonus.type === 'health') {
+    stats.health = Math.min(stats.health + totalValue, 1000); // limite max de vida (ajuste)
+  } else if (bonus.type === 'shield') {
+    spaceship.shield = Math.min(spaceship.shield + totalValue, spaceship.maxShield);
+    updateShieldValue();
+  }
+}
+
+
+
+
+
   // Função para avançar de nível
 function nextLevel() {
   stats.level++
@@ -483,12 +684,35 @@ function nextLevel() {
   updatePlayerDamage()
 }
 
-  
-  // Funções para desenhar os elementos
-  function drawSpaceship() {
-    ctx.fillStyle = 'lime'
-    ctx.fillRect(spaceship.x, spaceship.y, spaceship.width, spaceship.height)
+function drawSpaceship() {
+  // Verifica se a imagem está carregada antes de desenhar
+  if (spaceship.image.complete) {
+    ctx.drawImage(spaceship.image, spaceship.x, spaceship.y, spaceship.width, spaceship.height);
+  } else {
+    // Caso a imagem ainda não tenha carregado, desenha um retângulo como fallback
+    ctx.fillStyle = 'lime';
+    ctx.fillRect(spaceship.x, spaceship.y, spaceship.width, spaceship.height);
   }
+
+  // Desenha a barra de escudo
+  if (spaceship.maxShield > 0) {
+    ctx.fillStyle = 'gray';
+    ctx.fillRect(spaceship.x, spaceship.y - 12, spaceship.width, 6);
+
+    ctx.fillStyle = 'deepskyblue';
+    ctx.fillRect(spaceship.x, spaceship.y - 12, (spaceship.shield / spaceship.maxShield) * spaceship.width, 6);
+  }
+
+  // Desenha a barra de vida (health)
+  const maxHealth = 500; // Ajuste conforme o valor máximo de vida no seu jogo
+  if (maxHealth > 0) {
+    ctx.fillStyle = 'gray';
+    ctx.fillRect(spaceship.x, spaceship.y - 6, spaceship.width, 6); // Posiciona logo abaixo da barra de escudo
+
+    ctx.fillStyle = 'green'; // Cor para a barra de vida
+    ctx.fillRect(spaceship.x, spaceship.y - 6, (stats.health / maxHealth) * spaceship.width, 6);
+  }
+}
   
   function drawBullets() {
     ctx.fillStyle = 'red'
@@ -500,14 +724,43 @@ function nextLevel() {
     enemyBullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height))
   }
   
-  function drawEnemies() {
-    enemies.forEach(e => {
-      ctx.fillStyle = e.type === 'basic' ? 'red' : e.type === 'medium' ? 'orange' : 'purple'
-      ctx.fillRect(e.x, e.y, e.width, e.height)
-  
-      ctx.fillStyle = 'green'
-      ctx.fillRect(e.x, e.y - 8, (e.health / e.maxHealth) * e.width, 5)
-    })
-  }
+
+  function drawBonuses() {
+  bonuses.forEach(bonus => {
+    ctx.fillStyle = bonus.type === 'health' ? 'green' : 'deepskyblue';
+    ctx.fillRect(bonus.x, bonus.y, bonus.width, bonus.height);
+
+    // Desenhar multiplicador (x1, x2, x3) em branco por cima
+    ctx.fillStyle = 'white';
+    ctx.font = '16px Arial';
+    ctx.fillText('x' + bonus.multiplier, bonus.x + 5, bonus.y + 18);
+  });
+}
+
+function drawEnemies() {
+  enemies.forEach(e => {
+    // Desenha a imagem se estiver carregada e associada ao inimigo (para qualquer tipo)
+    if (e.image && e.image.complete) {
+      ctx.drawImage(e.image, e.x, e.y, e.width, e.height);
+    } else {
+      // Caso contrário, desenha um retângulo com a cor correspondente ao tipo (fallback)
+      ctx.fillStyle = e.type === 'basic' ? 'red' : e.type === 'medium' ? 'orange' : 'purple';
+      ctx.fillRect(e.x, e.y, e.width, e.height);
+    }
+
+    // Desenha a barra de escudo, se houver
+    if (e.maxShield > 0) {
+      ctx.fillStyle = 'gray';
+      ctx.fillRect(e.x, e.y - 16, e.width, 5);
+
+      ctx.fillStyle = 'lightblue';
+      ctx.fillRect(e.x, e.y - 16, (e.shield / e.maxShield) * e.width, 5);
+    }
+
+    // Desenha a barra de vida
+    ctx.fillStyle = 'green';
+    ctx.fillRect(e.x, e.y - 8, (e.health / e.maxHealth) * e.width, 5);
+  });
+}
   </script>
   
