@@ -242,11 +242,18 @@ bullets.push({
     enemies.forEach(enemy => {
       enemy.y += enemy.speed
   
-      // Inimigos médios se movem para os lados
       if (enemy.type === 'medium') {
-        enemy.x += Math.sin(enemy.y / 100) * 2
-        enemy.x = Math.max(0, Math.min(canvas.width - enemy.width, enemy.x))
-      }
+  const frequency = enemy.moveFrequency || 0.03
+  const amplitude = enemy.moveAmplitude || 20
+  const phase = enemy.movePhase || 0
+
+  // Movimento senoidal com variação individual
+  enemy.x += Math.sin(enemy.y * frequency + phase) * (amplitude * 0.05)
+
+  // Limita dentro da tela
+  enemy.x = Math.max(0, Math.min(canvas.width - enemy.width, enemy.x))
+}
+
   
       // Inimigos do tipo boss
       if (enemy.type === 'boss' && level >= 1) {
@@ -254,14 +261,14 @@ bullets.push({
       }
   
       // Chance de disparo para inimigos
-      const shootChance = 0.025 + level * 0.0050
+      const shootChance = 0.020 + level * 0.02
       if ((enemy.type === 'medium' || enemy.type === 'basic') && Math.random() < shootChance) {
         enemyBullets.push({
           x: enemy.x + enemy.width / 2 - 2,
           y: enemy.y + enemy.height,
           width: 7,
           height: 10,
-          speed: 5 + level * 0.5,
+          speed: 3 + level * 0.5,
         })
       }
     })
