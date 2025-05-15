@@ -193,54 +193,55 @@ doubleCannonBonusImage.onerror = () => {
 }
 
 
-  function setupTouchControls() {
-  let isTouching = false
+function setupTouchControls() {
+  let isTouching = false;
 
   // Offset vertical para manter a nave 80px acima do toque
-  const verticalOffset =  200 // 80px acima do toque
+  const verticalOffset = 200; // 80px acima do toque
+  const horizontalOffset = -50; // Deslocamento de 50px para a esquerda
 
   canvas.addEventListener('touchstart', (e) => {
-    isTouching = true
-    e.preventDefault()
-  }, { passive: false })
+    isTouching = true;
+    e.preventDefault();
+  }, { passive: false });
 
   canvas.addEventListener('touchmove', (e) => {
-    if (!isTouching) return
-    const touch = e.touches[0]
+    if (!isTouching) return;
+    const touch = e.touches[0];
 
     // Convertendo posição do toque em relação ao canvas
-    const rect = canvas.getBoundingClientRect()
-    const touchX = touch.clientX - rect.left
-    const touchY = touch.clientY - rect.top - verticalOffset // Aplique o deslocamento de 80px
+    const rect = canvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left + horizontalOffset; // Aplica o deslocamento horizontal de -50px
+    const touchY = touch.clientY - rect.top - verticalOffset; // Aplica o deslocamento vertical de 80px
 
-    // Move a nave em direção ao dedo
-    const dx = touchX - (spaceship.x + spaceship.width / 2)
-    const dy = touchY - (spaceship.y + spaceship.height / 2)
+    // Move a nave em direção ao ponto ajustado
+    const dx = touchX - (spaceship.x + spaceship.width / 2);
+    const dy = touchY - (spaceship.y + spaceship.height / 2);
 
-    const distance = Math.sqrt(dx * dx + dy * dy)
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
     // Defina uma velocidade proporcional à distância
-    const moveSpeed = Math.min(distance, spaceship.speed)
+    const moveSpeed = Math.min(distance, spaceship.speed);
 
     // Normalize o vetor direção
-    const directionX = dx / distance
-    const directionY = dy / distance
+    const directionX = dx / distance;
+    const directionY = dy / distance;
 
     if (!isNaN(directionX) && !isNaN(directionY)) {
-      spaceship.x += directionX * moveSpeed
-      spaceship.y += directionY * moveSpeed
+      spaceship.x += directionX * moveSpeed;
+      spaceship.y += directionY * moveSpeed;
     }
 
     // Impede que a nave saia da tela
-    spaceship.x = Math.max(0, Math.min(canvas.width - spaceship.width, spaceship.x))
-    spaceship.y = Math.max(0, Math.min(canvas.height - spaceship.height, spaceship.y))
+    spaceship.x = Math.max(0, Math.min(canvas.width - spaceship.width, spaceship.x));
+    spaceship.y = Math.max(0, Math.min(canvas.height - spaceship.height, spaceship.y));
 
-    e.preventDefault()
-  }, { passive: false })
+    e.preventDefault();
+  }, { passive: false });
 
   canvas.addEventListener('touchend', () => {
-    isTouching = false
-  })
+    isTouching = false;
+  });
 }
 
 function updatePlayerDamage() {
