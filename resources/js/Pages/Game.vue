@@ -1,25 +1,44 @@
 <template>
-   
-
     <div class="relative w-full h-screen bg-black text-white overflow-hidden">
       <!-- Canvas do jogo -->
       <canvas id="gameCanvas" class="w-full h-full"></canvas>
   
-      <!-- HUD -->
-      <div class="absolute top-0 left-0 w-full text-center z-10 p-4 bg-gradient-to-b from-black/70 to-transparent">
-        <br>
-  <br><br>
-        <h1 class="text-4xl font-bold mb-2">🚀 Destroyer 2D</h1>
-        <div class="text-lg">
-          <span class="mr-6">Score: {{ stats.score }}</span>
-          <span class="mr-6">Level: {{ stats.level }}</span>
-          <span class="mr-6">Shield: {{ shieldValue }}%</span>
-          <span>Health: {{ stats.health }}%</span>
-          
+      <!-- HUD otimizada -->
+      <div class="absolute top-0 left-0 w-full z-10 p-3 flex flex-col items-center backdrop-blur-sm bg-black/50 text-sm sm:text-base">
+        <!-- Título -->
+        <h1 class="text-xl sm:text-3xl font-bold text-white mb-2 flex items-center gap-2">
+          <i class="fas fa-rocket text-yellow-400"></i> Destroyer 2D
+        </h1>
+  
+        <!-- Status HUD -->
+        <div class="flex justify-center items-center gap-4 flex-wrap text-white">
+          <div class="flex items-center gap-1">
+            <i class="fas fa-star text-yellow-300"></i>
+            {{ stats.score }}
+          </div>
+          <div class="flex items-center gap-1">
+            <i class="fas fa-layer-group text-blue-300"></i>
+            {{ stats.level }}
+          </div>
+          <div class="flex items-center gap-1">
+            <i class="fas fa-shield-alt text-green-400"></i>
+            {{ shieldValue }}%
+          </div>
+          <div class="flex items-center gap-1">
+            <i class="fas fa-heart text-red-400"></i>
+            {{ stats.health }}%
+          </div>
         </div>
       </div>
     </div>
   </template>
+  
+ 
+  
+  <style>
+  @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css');
+  </style>
+  
   
   <script setup>
   import { onMounted, reactive } from 'vue'

@@ -16,9 +16,5 @@ export default defineConfig({
                 },
             },
         }),
-        
     ],
-    optimizeDeps: {
-        include: ['babylonjs'],
-      },
 });
