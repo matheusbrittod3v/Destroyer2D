@@ -261,7 +261,7 @@ bullets.push({
           y: enemy.y + enemy.height,
           width: 7,
           height: 10,
-          speed: 10 + level * 0.2,
+          speed: 5 + level * 0.5,
         })
       }
     })
