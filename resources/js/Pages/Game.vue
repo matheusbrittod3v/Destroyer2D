@@ -427,14 +427,14 @@ function shoot() {
       }
   
       // Chance de disparo para inimigos
-      const shootChance = 0.002 + level * 0.002
+      const shootChance = 0.005 + level * 0.005
       if ((enemy.type === 'medium' || enemy.type === 'basic') && Math.random() < shootChance) {
         enemyBullets.push({
           x: enemy.x + enemy.width / 2 - 2,
           y: enemy.y + enemy.height,
           width: 7,
           height: 10,
-          speed: 5 + level * 0.5,
+          speed: 10 + level * 0.5,
         })
       }
     })
@@ -591,7 +591,7 @@ function moveBonuses() {
   // Criação de inimigos com base no nível
   function createEnemies() {
     const now = Date.now()
-    if (now - lastEnemySpawn < COOLDOWN || enemies.length >= 4) return
+    if (now - lastEnemySpawn < COOLDOWN || enemies.length >= 300) return
   
     const level = stats.level
     const elapsed = (now - stats.phaseStartTime) / 1000
@@ -610,7 +610,7 @@ function moveBonuses() {
     } else if (stats.phase === 'medium') {
       spawnEnemy('medium', 80, 25, baseSpeed * 1.2, baseHealth * 1.5, baseDamage * 1.2)
     } else if (stats.phase === 'boss' && !stats.bossDefeated && !enemies.find(e => e.type === 'boss')) {
-      spawnEnemy('boss', 500, 100, 0.6 + level * 0.1, baseHealth * 10, baseDamage * 3, canvas.width / 2 - 100)
+      spawnEnemy('boss', 500, 100, 0.6 + level * 0.1, baseHealth * 300, baseDamage * 5, canvas.width / 2 - 100)
     }
   
     lastEnemySpawn = now
@@ -623,7 +623,7 @@ function moveBonuses() {
     maxShield = 30 + stats.level * 20;
     shield = maxShield;
   } else if (type === 'boss') {
-    maxShield = 150 + stats.level * 50;
+    maxShield = 250 + stats.level * 250;
     shield = maxShield;
   }
 
