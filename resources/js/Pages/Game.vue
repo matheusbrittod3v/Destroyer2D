@@ -14,6 +14,7 @@
           <span class="mr-6">Score: {{ stats.score }}</span>
           <span class="mr-6">Level: {{ stats.level }}</span>
           <span>Health: {{ stats.health }}%</span>
+          
         </div>
       </div>
     </div>
@@ -45,7 +46,8 @@ let burstCooldown = 0
   
   const COOLDOWN = 800
   const DAMAGE_PLAYER = 15
-  const DAMAGE_BULLET = 20
+  const playerDamage = reactive({ value: 20 })
+
   
   // Inicialização principal do jogo
   onMounted(() => {
@@ -129,6 +131,11 @@ let burstCooldown = 0
     isTouching = false
   })
 }
+
+function updatePlayerDamage() {
+  playerDamage.value = 20 + (stats.level - 1) * 5
+}
+
 
   
   // Controle do teclado
@@ -247,7 +254,7 @@ bullets.push({
       }
   
       // Chance de disparo para inimigos
-      const shootChance = 0.002 + level * 0.0001
+      const shootChance = 0.025 + level * 0.0050
       if ((enemy.type === 'medium' || enemy.type === 'basic') && Math.random() < shootChance) {
         enemyBullets.push({
           x: enemy.x + enemy.width / 2 - 2,
@@ -366,7 +373,7 @@ function shootMultiDirection(enemy) {
     const elapsed = (now - stats.phaseStartTime) / 1000
   
     const baseHealth = 30 + level * 15
-    const baseSpeed = 1.5 + level * 0.2
+    const baseSpeed = 1.5 + level * 0.5
     const baseDamage = 10 + level * 5
   
     if (elapsed >= 30 && stats.phase !== 'boss') {
@@ -402,7 +409,9 @@ function shootMultiDirection(enemy) {
       for (let j = enemies.length - 1; j >= 0; j--) {
         const enemy = enemies[j]
         if (checkCollision(bullet, enemy)) {
-          enemy.health -= DAMAGE_BULLET
+            enemy.health -= playerDamage.value
+
+
           bullets.splice(i, 1)
           if (enemy.health <= 0) {
             enemies.splice(j, 1)
@@ -464,6 +473,7 @@ function nextLevel() {
   stats.phase = 'basic'
   stats.bossDefeated = false
   stats.phaseStartTime = Date.now()
+  updatePlayerDamage()
 }
 
   
