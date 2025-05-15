@@ -66,11 +66,13 @@ let burstCooldown = 0
   let keys = {}
   let lastEnemySpawn = 0
   let bonuses = []  // array para armazenar os bônus ativos
+let doubleCannonActive = ref(false)  // Indica se o bônus de canhão duplo está ativo
+let doubleCannonTimer = ref(0)  // Timer para controlar os 10 segundos do bônus
 
   
   const COOLDOWN = 800
   const DAMAGE_PLAYER = 15
-  const playerDamage = reactive({ value: 20 })
+  const playerDamage = reactive({ value: 25 })
 
   
   // Inicialização principal do jogo
@@ -112,6 +114,34 @@ bossEnemyImage.onload = () => {
 };
 bossEnemyImage.onerror = () => {
   
+};
+
+// Imagens para os bônus
+let healthBonusImage = new Image();
+healthBonusImage.src = '/bonuses/health.png'; // Caminho para a imagem do bônus de vida
+healthBonusImage.onload = () => {
+  console.log('Imagem do bônus de vida carregada com sucesso!');
+};
+healthBonusImage.onerror = () => {
+  console.error('Erro ao carregar imagem do bônus de vida');
+};
+
+let shieldBonusImage = new Image();
+shieldBonusImage.src = '/bonuses/shield.png'; // Caminho para a imagem do bônus de escudo
+shieldBonusImage.onload = () => {
+  console.log('Imagem do bônus de escudo carregada com sucesso!');
+};
+shieldBonusImage.onerror = () => {
+  console.error('Erro ao carregar imagem do bônus de escudo');
+};
+
+let doubleCannonBonusImage = new Image();
+doubleCannonBonusImage.src = '/bonuses/doubleCannon.png'; // Caminho para a imagem do bônus de canhão duplo
+doubleCannonBonusImage.onload = () => {
+  console.log('Imagem do bônus de canhão duplo carregada com sucesso!');
+};
+doubleCannonBonusImage.onerror = () => {
+  console.error('Erro ao carregar imagem do bônus de canhão duplo');
 };
 
 
@@ -167,7 +197,7 @@ bossEnemyImage.onerror = () => {
   let isTouching = false
 
   // Offset vertical para manter a nave 80px acima do toque
-  const verticalOffset = 120 // 80px acima do toque
+  const verticalOffset =  200 // 80px acima do toque
 
   canvas.addEventListener('touchstart', (e) => {
     isTouching = true
@@ -214,7 +244,7 @@ bossEnemyImage.onerror = () => {
 }
 
 function updatePlayerDamage() {
-  playerDamage.value = 20 + (stats.level - 1) * 5
+  playerDamage.value = 20 + (stats.level - 1) * 10
 }
 
 
@@ -248,33 +278,38 @@ function updatePlayerDamage() {
   requestAnimationFrame(gameLoop);
 }
   
-  // Atualização dos elementos do jogo
-  function update() {
+function update() {
   movePlayer();
   moveBullets();
   moveEnemyBullets();
   moveEnemies();
-  moveBonuses();           // <- adiciona aqui o movimento dos bônus
+  moveBonuses();
   updateShieldValue();
   handleCollisions();
   createEnemies();
 
- // Controle de spawn do bônus, intervalo diminui 0,2s a cada nível, mínimo 2 segundos
- const now = Date.now()
-  if (!update.lastBonusSpawn) update.lastBonusSpawn = 0
+  // Controle do timer do bônus de canhão duplo
+  if (doubleCannonActive.value) {
+    doubleCannonTimer.value -= 1;
+    if (doubleCannonTimer.value <= 0) {
+      doubleCannonActive.value = false;
+    }
+  }
 
-  const baseInterval = 10000 // 10 segundos em ms
-  const decreasePerLevel = 200 // 0.2 segundos em ms
-  const minInterval = 2000 // intervalo mínimo de 2 segundos
+  // Controle de spawn do bônus, intervalo diminui 0,2s a cada nível, mínimo 2 segundos
+  const now = Date.now();
+  if (!update.lastBonusSpawn) update.lastBonusSpawn = 0;
 
-  const interval = Math.max(minInterval, baseInterval - decreasePerLevel * (stats.level  + 1))
+  const baseInterval = 10000; // 10 segundos em ms
+  const decreasePerLevel = 200; // 0.2 segundos em ms
+  const minInterval = 2000; // intervalo mínimo de 2 segundos
+
+  const interval = Math.max(minInterval, baseInterval - decreasePerLevel * (stats.level + 1));
 
   if (now - update.lastBonusSpawn > interval) {
-    spawnBonus()
-    update.lastBonusSpawn = now
+    spawnBonus();
+    update.lastBonusSpawn = now;
   }
-  
-  
 }
 
   
@@ -304,36 +339,53 @@ function updatePlayerDamage() {
 function shoot() {
   // Aguarda cooldown entre rajadas
   if (burstCooldown > 0) {
-    burstCooldown--
-    return
+    burstCooldown--;
+    return;
   }
 
   // Aguarda intervalo entre tiros de uma mesma rajada
   if (burstTimer > 0) {
-    burstTimer--
-    return
+    burstTimer--;
+    return;
   }
 
-  // Disparo individual da rajada
-bullets.push({
-  x: spaceship.x + spaceship.width / 2 - 2,
-  y: spaceship.y,
-  width: 5,
-  height: 30,
-  speed: stats.level > 1 ? 10 + stats.level * 0.2 : 10
-})
+  // Disparo com base no bônus de canhão duplo
+  if (doubleCannonActive.value) {
+    // Dispara dois tiros, um de cada lado da nave
+    bullets.push({
+      x: spaceship.x + spaceship.width / 4 - 2, // Lado esquerdo da nave
+      y: spaceship.y,
+      width: 5,
+      height: 30,
+      speed: stats.level > 1 ? 10 + stats.level * 0.2 : 10
+    });
+    bullets.push({
+      x: spaceship.x + (3 * spaceship.width) / 4 - 2, // Lado direito da nave
+      y: spaceship.y,
+      width: 5,
+      height: 30,
+      speed: stats.level > 1 ? 10 + stats.level * 0.2 : 10
+    });
+  } else {
+    // Disparo único normal
+    bullets.push({
+      x: spaceship.x + spaceship.width / 2 - 2,
+      y: spaceship.y,
+      width: 5,
+      height: 30,
+      speed: stats.level > 1 ? 10 + stats.level * 0.2 : 10
+    });
+  }
 
-
-  burstCount++
-  burstTimer = 5 // Frames entre tiros dentro da mesma rajada
+  burstCount++;
+  burstTimer = 5; // Frames entre tiros dentro da mesma rajada
 
   // Após 4 tiros, inicia cooldown da próxima rajada
   if (burstCount >= 10) {
-    burstCount = 0
-    burstCooldown = stats.level > 1 ? 15 - stats.level * 0.2 : 15 // Frames de pausa entre rajadas
+    burstCount = 0;
+    burstCooldown = stats.level > 1 ? 25 - stats.level * 0.5 : 25; // Frames de pausa entre rajadas
   }
 }
-
   
   // Movimento dos tiros
   function moveBullets() {
@@ -356,7 +408,7 @@ bullets.push({
       enemy.y += enemy.speed
   
       if (enemy.type === 'medium') {
-  const frequency = enemy.moveFrequency || 0.03
+  const frequency = enemy.moveFrequency || 0.05
   const amplitude = enemy.moveAmplitude || 20
   const phase = enemy.movePhase || 0
 
@@ -374,7 +426,7 @@ bullets.push({
       }
   
       // Chance de disparo para inimigos
-      const shootChance = 0.020 + level * 0.02
+      const shootChance = 0.002 + level * 0.002
       if ((enemy.type === 'medium' || enemy.type === 'basic') && Math.random() < shootChance) {
         enemyBullets.push({
           x: enemy.x + enemy.width / 2 - 2,
@@ -493,11 +545,23 @@ function spawnBonus() {
   const x = Math.random() * (canvas.width - width);
   const y = -height;  // começa acima da tela para cair
 
-  // Define tipo do bônus e multiplicador (x1, x2, x3)
-  // 50% chance vida, 50% escudo
-  const type = Math.random() < 0.5 ? 'health' : 'shield';
+  // Define tipo do bônus (33% chance para cada: health, shield, doubleCannon)
+  const random = Math.random();
+  let type;
+  let image;
+  if (random < 0.33) {
+    type = 'health';
+    image = healthBonusImage;
+  } else if (random < 0.66) {
+    type = 'shield';
+    image = shieldBonusImage;
+  } else {
+    type = 'doubleCannon';
+    image = doubleCannonBonusImage;
+  }
+
   // Multiplicador entre 1, 2 e 3 (probabilidade distribuída)
-  const multiplier = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,][Math.floor(Math.random() * 10)];
+  const multiplier = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10][Math.floor(Math.random() * 10)];
   // Valor base (em %)
   const baseValue = 10;
 
@@ -507,9 +571,13 @@ function spawnBonus() {
     type,
     multiplier,
     value: baseValue,
+    image, // Associa a imagem ao bônus
     collected: false,
   });
 }
+
+
+
 function moveBonuses() {
   bonuses = bonuses.filter(bonus => bonus.y < canvas.height && !bonus.collected);
 
@@ -522,7 +590,7 @@ function moveBonuses() {
   // Criação de inimigos com base no nível
   function createEnemies() {
     const now = Date.now()
-    if (now - lastEnemySpawn < COOLDOWN || enemies.length >= 10) return
+    if (now - lastEnemySpawn < COOLDOWN || enemies.length >= 4) return
   
     const level = stats.level
     const elapsed = (now - stats.phaseStartTime) / 1000
@@ -704,6 +772,9 @@ function handleCollisions() {
   } else if (bonus.type === 'shield') {
     spaceship.shield = Math.min(spaceship.shield + totalValue, spaceship.maxShield);
     updateShieldValue();
+  } else if (bonus.type === 'doubleCannon') {
+    doubleCannonActive.value = true;
+    doubleCannonTimer.value = 600; // 10 segundos a 60 FPS (10 * 60)
   }
 }
 
@@ -763,11 +834,25 @@ function drawEnemyBullets() {
 function drawBonuses() {
   if (bonuses.length === 0) return; // Evita operações se não houver bônus
   bonuses.forEach(bonus => {
-    ctx.fillStyle = bonus.type === 'health' ? 'green' : 'deepskyblue';
-    ctx.fillRect(bonus.x, bonus.y, bonus.width, bonus.height);
-    // Desenha texto apenas se necessário
+    // Desenha a imagem do bônus se estiver carregada
+    if (bonus.image && bonus.image.complete) {
+      ctx.drawImage(bonus.image, bonus.x, bonus.y, bonus.width, bonus.height);
+    } else {
+      // Caso a imagem não esteja carregada, usa uma cor de fallback
+      if (bonus.type === 'health') {
+        ctx.fillStyle = 'green';
+      } else if (bonus.type === 'shield') {
+        ctx.fillStyle = 'deepskyblue';
+      } else if (bonus.type === 'doubleCannon') {
+        ctx.fillStyle = 'red';
+      }
+      ctx.fillRect(bonus.x, bonus.y, bonus.width, bonus.height);
+    }
+
+    // Desenha o texto do multiplicador sobre a imagem
     ctx.fillStyle = 'white';
     ctx.font = '16px Arial';
+    ctx.textAlign = 'left';
     ctx.fillText('x' + bonus.multiplier, bonus.x + 5, bonus.y + 18);
   });
 }
