@@ -20,33 +20,23 @@ WORKDIR /var/www/html
 # Copie os arquivos da aplicação para o container
 COPY . .
 
-# Instale dependências PHP
+# Copie o arquivo de configuração personalizado do Apache
+COPY apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+
+# Instala dependências PHP do Laravel
 RUN composer install --no-dev --optimize-autoloader
 
-# Instale dependências do frontend
+# Instala dependências do frontend
 RUN npm install && npm run build
 
-# Permissões
+# Permissões corretas
 RUN chown -R www-data:www-data storage bootstrap/cache
 
-# Configura o Apache para apontar para public/
-RUN echo '<VirtualHost *:80>
-    ServerAdmin webmaster@localhost
-    DocumentRoot /var/www/html/public
-    <Directory /var/www/html/public>
-        Options Indexes FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-    ErrorLog ${APACHE_LOG_DIR}/error.log
-    CustomLog ${APACHE_LOG_DIR}/access.log combined
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
-
-# Habilita mod_rewrite (importante para rotas do Laravel)
+# Habilita mod_rewrite
 RUN a2enmod rewrite
 
-# Exponha a porta padrão do Apache
+# Exponha a porta do Apache
 EXPOSE 80
 
-# Inicia o Apache no modo foreground
+# Inicia o Apache
 CMD ["apache2-foreground"]
