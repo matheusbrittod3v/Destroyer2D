@@ -23,18 +23,18 @@ COPY . .
 # Ativa o módulo rewrite do Apache
 RUN a2enmod rewrite
 
-# Gera dinamicamente o arquivo de configuração do Apache
-RUN echo '<VirtualHost *:80> \
-    \n\tServerAdmin webmaster@localhost \
-    \n\tDocumentRoot /var/www/html/public \
-    \n\t<Directory /var/www/html/public> \
-    \n\t\tOptions Indexes FollowSymLinks \
-    \n\t\tAllowOverride All \
-    \n\t\tRequire all granted \
-    \n\t</Directory> \
-    \n\tErrorLog ${APACHE_LOG_DIR}/error.log \
-    \n\tCustomLog ${APACHE_LOG_DIR}/access.log combined \
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+# Gera dinamicamente o arquivo de configuração do Apache com quebras de linha válidas
+RUN printf '<VirtualHost *:80>\n\
+    ServerAdmin webmaster@localhost\n\
+    DocumentRoot /var/www/html/public\n\
+    <Directory /var/www/html/public>\n\
+        Options Indexes FollowSymLinks\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
+</VirtualHost>\n' > /etc/apache2/sites-available/000-default.conf
 
 # Instala dependências do Laravel
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
