@@ -1,29 +1,28 @@
-# Etapa base com Apache e PHP 8.2
 FROM php:8.2-apache
 
-# Instala dependências de sistema e extensões PHP
+# Instala dependências do sistema e extensões PHP necessárias para Laravel
 RUN apt-get update && apt-get install -y \
     zip unzip git curl libzip-dev libpng-dev libonig-dev libxml2-dev \
     gnupg ca-certificates lsb-release wget build-essential \
-    && docker-php-ext-install pdo pdo_mysql zip
+    && docker-php-ext-install pdo pdo_mysql zip mbstring xml
 
-# Instala Node.js 20.x
+# Instala Node.js 20.x e npm
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs
 
-# Copia o Composer da imagem oficial
+# Copia o Composer do container oficial para cá
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Define o diretório de trabalho da aplicação
+# Define diretório de trabalho
 WORKDIR /var/www/html
 
-# Copia os arquivos do projeto
+# Copia arquivos do projeto
 COPY . .
 
-# Ativa o módulo rewrite do Apache
+# Habilita rewrite do Apache (obrigatório para Laravel)
 RUN a2enmod rewrite
 
-# Gera dinamicamente o arquivo de configuração do Apache com quebras de linha válidas
+# Configura virtual host do Apache com permissão para .htaccess
 RUN printf '<VirtualHost *:80>\n\
     ServerAdmin webmaster@localhost\n\
     DocumentRoot /var/www/html/public\n\
@@ -36,17 +35,19 @@ RUN printf '<VirtualHost *:80>\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>\n' > /etc/apache2/sites-available/000-default.conf
 
-# Instala dependências do Laravel
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+# Instala dependências PHP via composer sem dev e com otimização
+RUN composer install --no-interaction --no-dev --optimize-autoloader
 
-# Instala dependências e compila frontend
+# Instala dependências frontend e compila (ajuste se usa Vite ou Mix)
 RUN npm install && npm run build
 
-# Ajusta permissões de diretórios necessários
-RUN chown -R www-data:www-data storage bootstrap/cache
+# Ajusta permissões (muito importante para evitar erro 500)
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
-# Expõe a porta padrão do Apache
+# Expõe porta padrão do Apache
 EXPOSE 80
 
-# Comando de entrada do container
+# Start Apache
 CMD ["apache2-foreground"]
+
