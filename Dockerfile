@@ -1,53 +1,42 @@
-FROM php:8.2-apache
+FROM php:8.3-apache
 
-# Instala dependências do sistema e extensões PHP necessárias para Laravel
+# Instala dependências e extensões PHP necessárias
 RUN apt-get update && apt-get install -y \
-    zip unzip git curl libzip-dev libpng-dev libonig-dev libxml2-dev \
-    gnupg ca-certificates lsb-release wget build-essential \
-    && docker-php-ext-install pdo pdo_mysql zip mbstring xml
+    curl zip unzip git libzip-dev libpng-dev libonig-dev libxml2-dev \
+    libjpeg-dev libfreetype6-dev libicu-dev libssl-dev gnupg2 nodejs npm \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql mbstring zip bcmath intl gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Instala Node.js 20.x e npm
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs
+# Instala Composer manualmente (via instalador oficial)
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Copia o Composer do container oficial para cá
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Define diretório de trabalho
-WORKDIR /var/www/html
-
-# Copia arquivos do projeto
-COPY . .
-
-# Habilita rewrite do Apache (obrigatório para Laravel)
+# Ativa mod_rewrite do Apache (necessário para Laravel)
 RUN a2enmod rewrite
 
-# Configura virtual host do Apache com permissão para .htaccess
-RUN printf '<VirtualHost *:80>\n\
-    ServerAdmin webmaster@localhost\n\
-    DocumentRoot /var/www/html/public\n\
-    <Directory /var/www/html/public>\n\
-        Options Indexes FollowSymLinks\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
-</VirtualHost>\n' > /etc/apache2/sites-available/000-default.conf
+# Define diretório da aplicação
+WORKDIR /var/www
 
-# Instala dependências PHP via composer sem dev e com otimização
-RUN composer install --no-interaction --no-dev --optimize-autoloader
+# Copia código da aplicação
+COPY . .
 
-# Instala dependências frontend e compila (ajuste se usa Vite ou Mix)
-RUN npm install && npm run build
-
-# Ajusta permissões (muito importante para evitar erro 500)
-RUN chown -R www-data:www-data storage bootstrap/cache \
+# Instala dependências PHP do Laravel, configura permissões
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader \
+    && mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
+    && chown -R www-data:www-data /var/www \
     && chmod -R 775 storage bootstrap/cache
 
-# Expõe porta padrão do Apache
+# Configura Apache para apontar para /var/www/public
+RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/public|' /etc/apache2/sites-available/000-default.conf
+
+# Permite override via .htaccess (requerido pelo Laravel)
+RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
+
+# Instala dependências Node e build do frontend (ajuste se usar yarn)
+RUN npm install --legacy-peer-deps && npm run build
+
+# Expondo porta 80
 EXPOSE 80
 
-# Start Apache
+# Executa Apache em primeiro plano
 CMD ["apache2-foreground"]
-
