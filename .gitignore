@@ -2,3 +2,11 @@
 node_modules
 .vscode
 ##
+
+# Local credentials and generated dependencies
+.env
+.env.*
+!.env.example
+node_modules/
+vendor/
+*.log
